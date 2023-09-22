@@ -1,5 +1,6 @@
 # CAnnect
 [![Run Tests](https://github.com/yuxki/cannect/actions/workflows/test.yaml/badge.svg)](https://github.com/yuxki/cannect/actions/workflows/test.yaml)
+[![codecov](https://codecov.io/gh/yuxki/cannect/graph/badge.svg?token=DHDLI50FCM)](https://codecov.io/gh/yuxki/cannect)
 
 ## Introduction
 CLI tool that facilitates the organization and management of private Certificate Authority (CA)

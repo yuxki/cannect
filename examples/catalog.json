@@ -1,0 +1,19 @@
+{
+  "catalogs": [
+    {
+      "alias": "root-ca.crt",
+      "uri": "file://examples/store/root-ca.crt",
+      "category": "certificate"
+    },
+    {
+      "alias": "sub-ca.crt",
+      "uri": "file://examples/store/sub-ca.crt",
+      "category": "certificate"
+    },
+    {
+      "alias": "server.crt",
+      "uri": "file://examples/store/server.crt",
+      "category": "certificate"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "menu": [
+    {
+      "alias": "root-ca.crt",
+      "uri": "file://testdata/root-ca.crt",
+      "category": "certificate"
+    },
+    {
+      "alias": "sub-ca.crt",
+      "uri": "file://testdata/sub-ca.crt",
+      "category": "certificate"
+    },
+    {
+      "alias": "server.crt",
+      "uri": "file://testdata/server.crt",
+      "category": "certificate"
+    }
+  ],
+  "order": [
+    {
+      "src_aliases": [
+        "root-ca.crt"
+      ],
+      "uri": "file://testdata/test-root-ca.crt.crt"
+    },
+    {
+      "src_aliases": [
+        "sub-ca.crt"
+      ],
+      "uri": "file://testdata/test-sub-ca.crt.crt"
+    },
+    {
+      "src_aliases": [
+        "root-ca.crt",
+        "sub-ca.crt",
+        "server.crt"
+      ],
+      "uri": "file://testdata/test-server.crt.crt"
+    }
+  ]
+}

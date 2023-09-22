@@ -1,0 +1,24 @@
+{
+  "orders": [
+    {
+      "aliases": [
+        "root-ca.crt"
+      ],
+      "uri": "file://examples/certs/root-ca.crt"
+    },
+    {
+      "aliases": [
+        "sub-ca.crt"
+      ],
+      "uri": "file://examples/certs/sub-ca.crt"
+    },
+    {
+      "aliases": [
+        "root-ca.crt",
+        "sub-ca.crt",
+        "server.crt"
+      ],
+      "uri": "file://examples/certs/server.crt"
+    }
+  ]
+}

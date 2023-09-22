@@ -210,7 +210,7 @@ env://CERTIFICATE_ENV
 
 ### GitHub
 Get the content of CA assets from the GitHub repository using the GitHub Get
-Repository Content API.
+Repository Content API. It needs environment variable `GITHUB_TOKEN`.
 
 - Scheme
     - "github"

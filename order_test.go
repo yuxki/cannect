@@ -19,21 +19,21 @@ func testGenCatalogs(t *testing.T) []Catalog {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rootCAAsset := NewCertiricate()
+	rootCAAsset := NewCertiricate(rootURI)
 	rootCatalog := NewFSCatalog(rootURI, "", rootCAAsset)
 
 	subURI, err := NewFSURI("file://testdata/sub-ca.crt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	subCAAsset := NewCertiricate()
+	subCAAsset := NewCertiricate(subURI)
 	subCatalog := NewFSCatalog(subURI, "", subCAAsset)
 
 	serverURI, err := NewFSURI("file://testdata/server.crt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	serverCAAsset := NewCertiricate()
+	serverCAAsset := NewCertiricate(serverURI)
 	serverCatalog := NewFSCatalog(serverURI, "", serverCAAsset)
 
 	return []Catalog{rootCatalog, subCatalog, serverCatalog}

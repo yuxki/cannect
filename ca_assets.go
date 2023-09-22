@@ -13,12 +13,15 @@ const (
 )
 
 type InvalidCAAssetError struct {
+	uri      URI
 	category string
 	reason   string
 }
 
 func (e InvalidCAAssetError) Error() string {
-	return fmt.Sprintf("may not be %s or not supported format: %s", e.category, e.reason)
+	return fmt.Sprintf(
+		"%s may not be %s or not supported format: %s", e.uri.Text(), e.category, e.reason,
+	)
 }
 
 // CAAsset represents the different types of assets within a private CA.
@@ -29,10 +32,12 @@ type CAAsset interface {
 	CheckContent([]byte) error
 }
 
-type Certiricate struct{}
+type Certiricate struct {
+	uri URI
+}
 
-func NewCertiricate() Certiricate {
-	return Certiricate{}
+func NewCertiricate(uri URI) Certiricate {
+	return Certiricate{uri: uri}
 }
 
 func (c Certiricate) CheckContent(content []byte) error {
@@ -43,6 +48,7 @@ func (c Certiricate) CheckContent(content []byte) error {
 
 	if !ok {
 		return InvalidCAAssetError{
+			uri:      c.uri,
 			category: CertCategory,
 			reason:   `not contain "-----BEGIN CERTIFICATE-----" pattern`,
 		}
@@ -51,10 +57,12 @@ func (c Certiricate) CheckContent(content []byte) error {
 	return nil
 }
 
-type PrivateKey struct{}
+type PrivateKey struct {
+	uri URI
+}
 
-func NewPrivateKey() PrivateKey {
-	return PrivateKey{}
+func NewPrivateKey(uri URI) PrivateKey {
+	return PrivateKey{uri: uri}
 }
 
 func (p PrivateKey) CheckContent(content []byte) error {
@@ -65,6 +73,7 @@ func (p PrivateKey) CheckContent(content []byte) error {
 
 	if !ok {
 		return InvalidCAAssetError{
+			uri:      p.uri,
 			category: PrivKeyCategory,
 			reason:   `not contain "PRIVATE KEY-----" pattern`,
 		}
@@ -76,6 +85,7 @@ func (p PrivateKey) CheckContent(content []byte) error {
 	}
 	if ok {
 		return InvalidCAAssetError{
+			uri:      p.uri,
 			category: PrivKeyCategory,
 			reason:   `contain "-----BEGIN ENCRYPTED" pattern`,
 		}
@@ -84,10 +94,12 @@ func (p PrivateKey) CheckContent(content []byte) error {
 	return nil
 }
 
-type EncryptedPrivateKey struct{}
+type EncryptedPrivateKey struct {
+	uri URI
+}
 
-func NewEncryptedPrivateKey() EncryptedPrivateKey {
-	return EncryptedPrivateKey{}
+func NewEncryptedPrivateKey(uri URI) EncryptedPrivateKey {
+	return EncryptedPrivateKey{uri: uri}
 }
 
 func (e EncryptedPrivateKey) CheckContent(content []byte) error {
@@ -98,6 +110,7 @@ func (e EncryptedPrivateKey) CheckContent(content []byte) error {
 
 	if !ok {
 		return InvalidCAAssetError{
+			uri:      e.uri,
 			category: EncPrivKeyCategory,
 			reason:   `not contain "-----BEGIN ENCRYPTED PRIVATE KEY-----" pattern`,
 		}
@@ -106,10 +119,12 @@ func (e EncryptedPrivateKey) CheckContent(content []byte) error {
 	return nil
 }
 
-type CRL struct{}
+type CRL struct {
+	uri URI
+}
 
-func NewCRL() CRL {
-	return CRL{}
+func NewCRL(uri URI) CRL {
+	return CRL{uri: uri}
 }
 
 func (c CRL) CheckContent(content []byte) error {
@@ -120,6 +135,7 @@ func (c CRL) CheckContent(content []byte) error {
 
 	if !ok {
 		return InvalidCAAssetError{
+			uri:      c.uri,
 			category: EncPrivKeyCategory,
 			reason:   `not contain "-----BEGIN X509 CRL-----" pattern`,
 		}

@@ -50,9 +50,7 @@ func newRunConfig(envOut string, conLimit int) runConfig {
 	}
 }
 
-func selectCatalog(
-	cJSON CatalogJSON, scheme string, asset cannect.CAAsset, logger *log.Logger,
-) (cannect.Catalog, error) {
+func selectCatalog(cJSON CatalogJSON, scheme string, logger *log.Logger) (cannect.Catalog, error) {
 	var catalog cannect.Catalog
 
 	switch scheme {
@@ -61,12 +59,14 @@ func selectCatalog(
 		if err != nil {
 			return nil, err
 		}
+		asset := selectCAAsset(cJSON, uri)
 		catalog = cannect.NewFSCatalog(uri, cJSON.Alias, asset, cannect.WithCatalogLogger(logger))
 	case "github":
 		uri, err := cannect.NewGitHubURI(cJSON.URI)
 		if err != nil {
 			return nil, err
 		}
+		asset := selectCAAsset(cJSON, uri)
 		catalog = cannect.NewGitHubCatalog(uri, cJSON.Alias, asset, cannect.WithCatalogLogger(logger))
 	default:
 		panic(fmt.Sprintf("Undefined source storage: %s", scheme))
@@ -75,18 +75,18 @@ func selectCatalog(
 	return catalog, nil
 }
 
-func selectCAAsset(cJSON CatalogJSON) cannect.CAAsset {
+func selectCAAsset(cJSON CatalogJSON, uri cannect.URI) cannect.CAAsset {
 	var asset cannect.CAAsset
 
 	switch cJSON.Category {
 	case cannect.CertCategory:
-		asset = cannect.NewCertiricate()
+		asset = cannect.NewCertiricate(uri)
 	case cannect.PrivKeyCategory:
-		asset = cannect.NewPrivateKey()
+		asset = cannect.NewPrivateKey(uri)
 	case cannect.EncPrivKeyCategory:
-		asset = cannect.NewEncryptedPrivateKey()
+		asset = cannect.NewEncryptedPrivateKey(uri)
 	case cannect.CRLCategory:
-		asset = cannect.NewCRL()
+		asset = cannect.NewCRL(uri)
 	default:
 		panic(fmt.Sprintf("Undefined category: %s", cJSON.Category))
 	}
@@ -117,7 +117,7 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]cannect.Cat
 				panic(fmt.Sprintf("alias in destination not found in sources: %s", alias))
 			}
 
-			catalog, err := selectCatalog(cJSON, srcSchemeReg.FindString(cJSON.URI), selectCAAsset(cJSON), logger)
+			catalog, err := selectCatalog(cJSON, srcSchemeReg.FindString(cJSON.URI), logger)
 			if err != nil {
 				return nil, err
 			}

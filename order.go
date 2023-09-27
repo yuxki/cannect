@@ -3,7 +3,6 @@ package cannect
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"runtime"
 )
@@ -12,16 +11,9 @@ import (
 // contents at the destination specified by its own URI.
 type Order interface {
 	Order(context.Context) error
-	setLogger(*log.Logger)
 }
 
 type OrderOption func(Order)
-
-func WithOrderLogger(logger *log.Logger) func(Order) {
-	return func(o Order) {
-		o.setLogger(logger)
-	}
-}
 
 // FSOrder implements the Order interface. It is responsible for
 // placing a CAAsset object in a specific location within the local file system,
@@ -29,7 +21,7 @@ func WithOrderLogger(logger *log.Logger) func(Order) {
 type FSOrder struct {
 	uri      URI
 	catalogs []Catalog
-	logger   *log.Logger
+	logger   Logger
 }
 
 func NewFSOrder(uri URI, catalogs []Catalog, opts ...OrderOption) *FSOrder {
@@ -47,7 +39,7 @@ func NewFSOrder(uri URI, catalogs []Catalog, opts ...OrderOption) *FSOrder {
 
 func (f *FSOrder) Order(ctx context.Context) error {
 	if f.logger != nil {
-		f.logger.Printf("Ordering: %s", f.uri.Text())
+		f.logger.Log(f.uri)
 	}
 
 	file, err := os.Create(f.uri.Path())
@@ -73,8 +65,9 @@ func (f *FSOrder) Order(ctx context.Context) error {
 	return nil
 }
 
-func (f *FSOrder) setLogger(logger *log.Logger) {
-	f.logger = logger
+func (f *FSOrder) WithLogger(l Logger) *FSOrder {
+	f.logger = l
+	return f
 }
 
 // EnvOrder implements the Order interface. This is responsible for writing values in
@@ -84,7 +77,7 @@ type EnvOrder struct {
 	uri      URI
 	file     *os.File
 	catalogs []Catalog
-	logger   *log.Logger
+	logger   Logger
 }
 
 func NewEnvOrder(uri URI, catalogs []Catalog, file *os.File, opts ...OrderOption) *EnvOrder {
@@ -103,7 +96,7 @@ func NewEnvOrder(uri URI, catalogs []Catalog, file *os.File, opts ...OrderOption
 
 func (e *EnvOrder) Order(ctx context.Context) error {
 	if e.logger != nil {
-		e.logger.Printf("Ordering: %s", e.uri.Text())
+		e.logger.Log(e.uri)
 	}
 
 	var buf []byte
@@ -130,6 +123,7 @@ func (e *EnvOrder) Order(ctx context.Context) error {
 	return nil
 }
 
-func (e *EnvOrder) setLogger(logger *log.Logger) {
-	e.logger = logger
+func (e *EnvOrder) WithLogger(l Logger) *EnvOrder {
+	e.logger = l
+	return e
 }

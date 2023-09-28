@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/google/go-github/v55/github"
-	"github.com/yuxki/cannect/pkg/uri"
+	uriapi "github.com/yuxki/cannect/pkg/uri"
 )
 
 type Logger interface {
@@ -34,13 +34,13 @@ func (e FetchError) Error() string {
 // FSCatalog is an implementation of the Catalog interface. It is responsible for
 // fetching assets held by a Private CA from the local filesystem.
 type FSCatalog struct {
-	uri     uri.FSURI
+	uri     uriapi.FSURI
 	alias   string
 	checker AssetChecker
 	logger  Logger
 }
 
-func NewFSCatalog(uri uri.FSURI, alias string, checker AssetChecker) *FSCatalog {
+func NewFSCatalog(uri uriapi.FSURI, alias string, checker AssetChecker) *FSCatalog {
 	ctlg := &FSCatalog{
 		uri:     uri,
 		alias:   alias,
@@ -79,13 +79,13 @@ func (f *FSCatalog) WithLogger(l Logger) *FSCatalog {
 // It is responsible for fetching assets held by a Private CA from a GitHub repository.
 // It uses the GitHub Get Repository Content API for this purpose.
 type GitHubCatalog struct {
-	uri     uri.GitHubURI
+	uri     uriapi.GitHubURI
 	alias   string
 	checker AssetChecker
 	logger  Logger
 }
 
-func NewGitHubCatalog(uri uri.GitHubURI, alias string, checker AssetChecker) *GitHubCatalog {
+func NewGitHubCatalog(uri uriapi.GitHubURI, alias string, checker AssetChecker) *GitHubCatalog {
 	ctlg := &GitHubCatalog{
 		uri:     uri,
 		alias:   alias,

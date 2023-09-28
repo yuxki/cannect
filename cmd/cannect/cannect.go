@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/yuxki/cannect/pkg/asset"
-	"github.com/yuxki/cannect/pkg/catalog"
-	"github.com/yuxki/cannect/pkg/order"
-	"github.com/yuxki/cannect/pkg/uri"
+	catalogapi "github.com/yuxki/cannect/pkg/catalog"
+	orderapi "github.com/yuxki/cannect/pkg/order"
+	uriapi "github.com/yuxki/cannect/pkg/uri"
 )
 
 type CatalogJSON struct {
@@ -67,14 +67,14 @@ func (c *catalogLogger) Log(uriText string) {
 	c.l.Printf("Fetching: %s", uriText)
 }
 
-func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]order.Catalog, error) {
-	catalogSets := make([][]order.Catalog, 0, len(cntJSON.Orders))
+func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Catalog, error) {
+	catalogSets := make([][]orderapi.Catalog, 0, len(cntJSON.Orders))
 
 	srcSchemeReg := regexp.MustCompile("^(file|github)")
 	cLogger := catalogLogger{l: logger}
 
 	for _, oJSON := range cntJSON.Orders {
-		catalogSet := make([]order.Catalog, 0, len(oJSON.CatalogAliases))
+		catalogSet := make([]orderapi.Catalog, 0, len(oJSON.CatalogAliases))
 		for _, alias := range oJSON.CatalogAliases {
 			var cJSON CatalogJSON
 			var ok bool
@@ -91,7 +91,7 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]order.Catal
 				panic(fmt.Sprintf("alias in destination not found in sources: %s", alias))
 			}
 
-			var checker catalog.AssetChecker
+			var checker catalogapi.AssetChecker
 
 			switch cJSON.Category {
 			case asset.CertCategory:
@@ -106,27 +106,27 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]order.Catal
 				panic(fmt.Sprintf("Undefined category: %s", cJSON.Category))
 			}
 
-			var ctlg order.Catalog
+			var catalog orderapi.Catalog
 			scheme := srcSchemeReg.FindString(cJSON.URI)
 
 			switch scheme {
 			case "file":
-				uri, err := uri.NewFSURI(cJSON.URI)
+				uri, err := uriapi.NewFSURI(cJSON.URI)
 				if err != nil {
 					return nil, err
 				}
-				ctlg = catalog.NewFSCatalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
+				catalog = catalogapi.NewFSCatalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
 			case "github":
-				uri, err := uri.NewGitHubURI(cJSON.URI)
+				uri, err := uriapi.NewGitHubURI(cJSON.URI)
 				if err != nil {
 					return nil, err
 				}
-				ctlg = catalog.NewGitHubCatalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
+				catalog = catalogapi.NewGitHubCatalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
 			default:
 				panic(fmt.Sprintf("Undefined source storage: %s", scheme))
 			}
 
-			catalogSet = append(catalogSet, ctlg)
+			catalogSet = append(catalogSet, catalog)
 		}
 		catalogSets = append(catalogSets, catalogSet)
 	}
@@ -161,19 +161,19 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 		idx := idx
 		wg.Add(1)
 
-		var ord Order
+		var order Order
 		scheme := dstSchemeReg.FindString(oJSON.URI)
 
 		switch scheme {
 		case "file":
-			uri, err := uri.NewFSURI(oJSON.URI)
+			uri, err := uriapi.NewFSURI(oJSON.URI)
 			if err != nil {
 				return err
 			}
 
-			ord = order.NewFSOrder(uri, catalogSets[idx]).WithLogger(&oLog)
+			order = orderapi.NewFSOrder(uri, catalogSets[idx]).WithLogger(&oLog)
 		case "env":
-			uri, err := uri.NewEnvURI(oJSON.URI)
+			uri, err := uriapi.NewEnvURI(oJSON.URI)
 			if err != nil {
 				return err
 			}
@@ -186,14 +186,14 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 				defer envFile.Close()
 			}
 
-			ord = order.NewEnvOrder(uri, catalogSets[idx], envFile).WithLogger(&oLog)
+			order = orderapi.NewEnvOrder(uri, catalogSets[idx], envFile).WithLogger(&oLog)
 		default:
 			panic(fmt.Sprintf("Undefined destination scheme: %s", scheme))
 		}
 
 		go func() {
 			limit <- struct{}{}
-			err := ord.Order(ctx)
+			err := order.Order(ctx)
 			if err != nil {
 				panic(err)
 			}

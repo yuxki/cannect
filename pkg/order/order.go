@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/yuxki/cannect/pkg/uri"
+	uriapi "github.com/yuxki/cannect/pkg/uri"
 )
 
 type Logger interface {
@@ -24,12 +24,12 @@ type Catalog interface {
 // placing a CAAsset object in a specific location within the local file system,
 // identified by its unique URI path.
 type FSOrder struct {
-	uri      uri.FSURI
+	uri      uriapi.FSURI
 	catalogs []Catalog
 	l        Logger
 }
 
-func NewFSOrder(uri uri.FSURI, catalogs []Catalog) *FSOrder {
+func NewFSOrder(uri uriapi.FSURI, catalogs []Catalog) *FSOrder {
 	order := &FSOrder{
 		uri:      uri,
 		catalogs: catalogs,
@@ -75,13 +75,13 @@ func (f *FSOrder) WithLogger(l Logger) *FSOrder {
 // the format of "export 'key'='value'" to its own file descriptors. It is specifically
 // designed to write to environment variables by saving and executing the written file.
 type EnvOrder struct {
-	uri      uri.EnvURI
+	uri      uriapi.EnvURI
 	file     *os.File
 	catalogs []Catalog
 	l        Logger
 }
 
-func NewEnvOrder(uri uri.EnvURI, catalogs []Catalog, file *os.File) *EnvOrder {
+func NewEnvOrder(uri uriapi.EnvURI, catalogs []Catalog, file *os.File) *EnvOrder {
 	order := &EnvOrder{
 		uri:      uri,
 		catalogs: catalogs,

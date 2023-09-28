@@ -13,8 +13,6 @@ type Order interface {
 	Order(context.Context) error
 }
 
-type OrderOption func(Order)
-
 // FSOrder implements the Order interface. It is responsible for
 // placing a CAAsset object in a specific location within the local file system,
 // identified by its unique URI path.
@@ -24,14 +22,10 @@ type FSOrder struct {
 	logger   Logger
 }
 
-func NewFSOrder(uri URI, catalogs []Catalog, opts ...OrderOption) *FSOrder {
+func NewFSOrder(uri URI, catalogs []Catalog) *FSOrder {
 	order := &FSOrder{
 		uri:      uri,
 		catalogs: catalogs,
-	}
-
-	for _, optF := range opts {
-		optF(order)
 	}
 
 	return order
@@ -80,15 +74,11 @@ type EnvOrder struct {
 	logger   Logger
 }
 
-func NewEnvOrder(uri URI, catalogs []Catalog, file *os.File, opts ...OrderOption) *EnvOrder {
+func NewEnvOrder(uri URI, catalogs []Catalog, file *os.File) *EnvOrder {
 	order := &EnvOrder{
 		uri:      uri,
 		catalogs: catalogs,
 		file:     file,
-	}
-
-	for _, optF := range opts {
-		optF(order)
 	}
 
 	return order

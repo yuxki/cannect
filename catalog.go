@@ -37,15 +37,11 @@ type FSCatalog struct {
 	logger Logger
 }
 
-func NewFSCatalog(uri URI, alias string, asset CAAsset, opts ...CatalogOption) *FSCatalog {
+func NewFSCatalog(uri URI, alias string, asset CAAsset) *FSCatalog {
 	ctlg := &FSCatalog{
 		uri:   uri,
 		alias: alias,
 		asset: asset,
-	}
-
-	for _, optF := range opts {
-		optF(ctlg)
 	}
 
 	return ctlg
@@ -86,15 +82,11 @@ type GitHubCatalog struct {
 	logger Logger
 }
 
-func NewGitHubCatalog(uri GitHubURI, alias string, asset CAAsset, opts ...CatalogOption) *GitHubCatalog {
+func NewGitHubCatalog(uri GitHubURI, alias string, asset CAAsset) *GitHubCatalog {
 	ctlg := &GitHubCatalog{
 		uri:   uri,
 		alias: alias,
 		asset: asset,
-	}
-
-	for _, optF := range opts {
-		optF(ctlg)
 	}
 
 	return ctlg

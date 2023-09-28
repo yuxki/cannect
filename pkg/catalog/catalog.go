@@ -1,4 +1,4 @@
-package cannect
+package catalog
 
 import (
 	"context"
@@ -7,7 +7,18 @@ import (
 	"os"
 
 	"github.com/google/go-github/v55/github"
+	"github.com/yuxki/cannect/pkg/uri"
 )
+
+type Logger interface {
+	// Log about provided URI.
+	Log(uriText string)
+}
+
+type AssetChecker interface {
+	// Verify that the content in the asset as expected.
+	CheckContent([]byte) error
+}
 
 // FetchError is used to represent an error that occurs when fetching a
 // data fails.
@@ -20,32 +31,20 @@ func (e FetchError) Error() string {
 	return fmt.Sprintf("fetch failed at %s: %s", e.uri, e.reason)
 }
 
-// Catalog represents catalog of assets held by Private CA.
-type Catalog interface {
-	// Fetch retrieves data based on the information of its own URI.
-	Fetch(context.Context) ([]byte, error)
-}
-
-type CatalogOption func(Catalog)
-
 // FSCatalog is an implementation of the Catalog interface. It is responsible for
 // fetching assets held by a Private CA from the local filesystem.
 type FSCatalog struct {
-	uri    URI
-	alias  string
-	asset  CAAsset
-	logger Logger
+	uri     uri.FSURI
+	alias   string
+	checker AssetChecker
+	logger  Logger
 }
 
-func NewFSCatalog(uri URI, alias string, asset CAAsset, opts ...CatalogOption) *FSCatalog {
+func NewFSCatalog(uri uri.FSURI, alias string, checker AssetChecker) *FSCatalog {
 	ctlg := &FSCatalog{
-		uri:   uri,
-		alias: alias,
-		asset: asset,
-	}
-
-	for _, optF := range opts {
-		optF(ctlg)
+		uri:     uri,
+		alias:   alias,
+		checker: checker,
 	}
 
 	return ctlg
@@ -55,7 +54,7 @@ func NewFSCatalog(uri URI, alias string, asset CAAsset, opts ...CatalogOption) *
 // and return the content of the file as a byte slice.
 func (f *FSCatalog) Fetch(ctx context.Context) ([]byte, error) {
 	if f.logger != nil {
-		f.logger.Log(f.uri)
+		f.logger.Log(f.uri.Text())
 	}
 
 	buf, err := os.ReadFile(f.uri.Path())
@@ -63,9 +62,9 @@ func (f *FSCatalog) Fetch(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	err = f.asset.CheckContent(buf)
+	err = f.checker.CheckContent(buf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", f.uri.Path(), err)
 	}
 
 	return buf, nil
@@ -80,21 +79,17 @@ func (f *FSCatalog) WithLogger(l Logger) *FSCatalog {
 // It is responsible for fetching assets held by a Private CA from a GitHub repository.
 // It uses the GitHub Get Repository Content API for this purpose.
 type GitHubCatalog struct {
-	uri    GitHubURI
-	alias  string
-	asset  CAAsset
-	logger Logger
+	uri     uri.GitHubURI
+	alias   string
+	checker AssetChecker
+	logger  Logger
 }
 
-func NewGitHubCatalog(uri GitHubURI, alias string, asset CAAsset, opts ...CatalogOption) *GitHubCatalog {
+func NewGitHubCatalog(uri uri.GitHubURI, alias string, checker AssetChecker) *GitHubCatalog {
 	ctlg := &GitHubCatalog{
-		uri:   uri,
-		alias: alias,
-		asset: asset,
-	}
-
-	for _, optF := range opts {
-		optF(ctlg)
+		uri:     uri,
+		alias:   alias,
+		checker: checker,
 	}
 
 	return ctlg
@@ -105,7 +100,7 @@ func NewGitHubCatalog(uri GitHubURI, alias string, asset CAAsset, opts ...Catalo
 // request. The function then returns the content of the file as a byte slice.
 func (g *GitHubCatalog) Fetch(ctx context.Context) ([]byte, error) {
 	if g.logger != nil {
-		g.logger.Log(g.uri)
+		g.logger.Log(g.uri.Text())
 	}
 
 	client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
@@ -130,9 +125,9 @@ func (g *GitHubCatalog) Fetch(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	err = g.asset.CheckContent(buf)
+	err = g.checker.CheckContent(buf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", g.uri.Path(), err)
 	}
 
 	return buf, nil

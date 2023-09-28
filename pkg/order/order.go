@@ -1,45 +1,46 @@
-package cannect
+package order
 
 import (
 	"context"
 	"fmt"
 	"os"
 	"runtime"
+
+	"github.com/yuxki/cannect/pkg/uri"
 )
 
-// Order is a struct that retrieves data from its own catalog and writes the
-// contents at the destination specified by its own URI.
-type Order interface {
-	Order(context.Context) error
+type Logger interface {
+	// Log about provided URI.
+	Log(uriText string)
 }
 
-type OrderOption func(Order)
+// Catalog represents catalog of assets held by Private CA.
+type Catalog interface {
+	// Fetch retrieves data based on the information of its own URI.
+	Fetch(context.Context) ([]byte, error)
+}
 
 // FSOrder implements the Order interface. It is responsible for
 // placing a CAAsset object in a specific location within the local file system,
 // identified by its unique URI path.
 type FSOrder struct {
-	uri      URI
+	uri      uri.FSURI
 	catalogs []Catalog
-	logger   Logger
+	l        Logger
 }
 
-func NewFSOrder(uri URI, catalogs []Catalog, opts ...OrderOption) *FSOrder {
+func NewFSOrder(uri uri.FSURI, catalogs []Catalog) *FSOrder {
 	order := &FSOrder{
 		uri:      uri,
 		catalogs: catalogs,
-	}
-
-	for _, optF := range opts {
-		optF(order)
 	}
 
 	return order
 }
 
 func (f *FSOrder) Order(ctx context.Context) error {
-	if f.logger != nil {
-		f.logger.Log(f.uri)
+	if f.l != nil {
+		f.l.Log(f.uri.Text())
 	}
 
 	file, err := os.Create(f.uri.Path())
@@ -66,7 +67,7 @@ func (f *FSOrder) Order(ctx context.Context) error {
 }
 
 func (f *FSOrder) WithLogger(l Logger) *FSOrder {
-	f.logger = l
+	f.l = l
 	return f
 }
 
@@ -74,29 +75,25 @@ func (f *FSOrder) WithLogger(l Logger) *FSOrder {
 // the format of "export 'key'='value'" to its own file descriptors. It is specifically
 // designed to write to environment variables by saving and executing the written file.
 type EnvOrder struct {
-	uri      URI
+	uri      uri.EnvURI
 	file     *os.File
 	catalogs []Catalog
-	logger   Logger
+	l        Logger
 }
 
-func NewEnvOrder(uri URI, catalogs []Catalog, file *os.File, opts ...OrderOption) *EnvOrder {
+func NewEnvOrder(uri uri.EnvURI, catalogs []Catalog, file *os.File) *EnvOrder {
 	order := &EnvOrder{
 		uri:      uri,
 		catalogs: catalogs,
 		file:     file,
 	}
 
-	for _, optF := range opts {
-		optF(order)
-	}
-
 	return order
 }
 
 func (e *EnvOrder) Order(ctx context.Context) error {
-	if e.logger != nil {
-		e.logger.Log(e.uri)
+	if e.l != nil {
+		e.l.Log(e.uri.Text())
 	}
 
 	var buf []byte
@@ -124,6 +121,6 @@ func (e *EnvOrder) Order(ctx context.Context) error {
 }
 
 func (e *EnvOrder) WithLogger(l Logger) *EnvOrder {
-	e.logger = l
+	e.l = l
 	return e
 }

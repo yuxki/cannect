@@ -1,4 +1,4 @@
-package cannect
+package order
 
 import (
 	"context"
@@ -10,31 +10,34 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/yuxki/cannect/pkg/asset"
+	"github.com/yuxki/cannect/pkg/catalog"
+	"github.com/yuxki/cannect/pkg/uri"
 )
 
 func testGenCatalogs(t *testing.T) []Catalog {
 	t.Helper()
 
-	rootURI, err := NewFSURI("file://testdata/root-ca.crt")
+	rootURI, err := uri.NewFSURI("file://testdata/root-ca.crt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	rootCAAsset := NewCertiricate(rootURI)
-	rootCatalog := NewFSCatalog(rootURI, "", rootCAAsset)
+	rootCAAsset := asset.NewCertiricate()
+	rootCatalog := catalog.NewFSCatalog(rootURI, "", rootCAAsset)
 
-	subURI, err := NewFSURI("file://testdata/sub-ca.crt")
+	subURI, err := uri.NewFSURI("file://testdata/sub-ca.crt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	subCAAsset := NewCertiricate(subURI)
-	subCatalog := NewFSCatalog(subURI, "", subCAAsset)
+	subCAAsset := asset.NewCertiricate()
+	subCatalog := catalog.NewFSCatalog(subURI, "", subCAAsset)
 
-	serverURI, err := NewFSURI("file://testdata/server.crt")
+	serverURI, err := uri.NewFSURI("file://testdata/server.crt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	serverCAAsset := NewCertiricate(serverURI)
-	serverCatalog := NewFSCatalog(serverURI, "", serverCAAsset)
+	serverCAAsset := asset.NewCertiricate()
+	serverCatalog := catalog.NewFSCatalog(serverURI, "", serverCAAsset)
 
 	return []Catalog{rootCatalog, subCatalog, serverCatalog}
 }
@@ -44,20 +47,20 @@ func TestFSOrder_Order(t *testing.T) {
 
 	dir := "testdata"
 	dstP := path.Join(dir, "TestFSOrder_Order.out")
-	uri, err := NewFSURI(fmt.Sprintf("file://%s", dstP))
+	fsURI, err := uri.NewFSURI(fmt.Sprintf("file://%s", dstP))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	catalogs := testGenCatalogs(t)
 
-	fsOrder := NewFSOrder(uri, catalogs)
+	fsOrder := NewFSOrder(fsURI, catalogs)
 	err = fsOrder.Order(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	result, err := os.ReadFile(uri.path)
+	result, err := os.ReadFile(fsURI.Path())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +78,7 @@ func TestFSOrder_Order(t *testing.T) {
 func TestEnvOrder_Order(t *testing.T) {
 	t.Parallel()
 
-	uri, err := NewEnvURI(fmt.Sprintf("env://%s", "abc_efg"))
+	uri, err := uri.NewEnvURI(fmt.Sprintf("env://%s", "abc_efg"))
 	if err != nil {
 		t.Fatal(err)
 	}

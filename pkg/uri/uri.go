@@ -1,4 +1,4 @@
-package cannect
+package uri
 
 import (
 	"fmt"
@@ -13,21 +13,6 @@ type InvalidURIError struct {
 
 func (i InvalidURIError) Error() string {
 	return fmt.Sprintf("Invalid uri: %s", i.uri)
-}
-
-// The URI interface represents a Uniform Resource Identifier that "cannect" defines.
-//   - The "scheme" defines the type of source for data retrieval or writing.
-//   - The "path" indicates a specific location within that source.
-//
-// It should validate the URI string during instance creation to
-// ensure it conforms to the original definition.
-type URI interface {
-	// Text should returns the full URI as a string.
-	Text() string
-	// Scheme should returns the part of scheme in URI.
-	Scheme() string
-	// Scheme should returns the part of path in URI.
-	Path() string
 }
 
 // FSURI represents a URI to a local file.
@@ -54,14 +39,17 @@ func NewFSURI(uri string) (FSURI, error) {
 	return fsURI, nil
 }
 
+// Text returns the full URI as a string.
 func (u FSURI) Text() string {
 	return u.text
 }
 
+// Scheme returns the part of scheme in URI.
 func (u FSURI) Scheme() string {
 	return u.scheme
 }
 
+// Scheme returns the part of path in URI.
 func (u FSURI) Path() string {
 	return u.path
 }
@@ -90,14 +78,17 @@ func NewEnvURI(uri string) (EnvURI, error) {
 	return eURI, nil
 }
 
+// Text returns the full URI as a string.
 func (u EnvURI) Text() string {
 	return u.text
 }
 
+// Scheme returns the part of scheme in URI.
 func (u EnvURI) Scheme() string {
 	return u.scheme
 }
 
+// Scheme returns the part of path in URI.
 func (u EnvURI) Path() string {
 	return u.path
 }

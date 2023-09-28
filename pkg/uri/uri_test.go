@@ -1,10 +1,10 @@
-package cannect
+package uri
 
 import (
 	"testing"
 )
 
-type URIInterfaceTestData struct {
+type uriCommonTestData struct {
 	testcase string
 	// input
 	uri string
@@ -15,7 +15,7 @@ type URIInterfaceTestData struct {
 	err error
 }
 
-func testURIInterfaceObj(t *testing.T, data URIInterfaceTestData, uri URI, err error) {
+func testCommonTestData(t *testing.T, data uriCommonTestData, text, scheme, path string, err error) {
 	t.Helper()
 
 	if data.err == nil {
@@ -32,23 +32,23 @@ func testURIInterfaceObj(t *testing.T, data URIInterfaceTestData, uri URI, err e
 		return
 	}
 
-	if uri.Text() != data.uri {
-		t.Errorf("Expected uri text is %s but got: %s", data.uri, uri.Text())
+	if text != data.uri {
+		t.Errorf("Expected uri text is %s but got: %s", data.uri, text)
 	}
 
-	if uri.Scheme() != data.scheme {
-		t.Errorf("Expected scheme is %s but got: %s", data.scheme, uri.Scheme())
+	if scheme != data.scheme {
+		t.Errorf("Expected scheme is %s but got: %s", data.scheme, scheme)
 	}
 
-	if uri.Path() != data.path {
-		t.Errorf("Expected path is %s but got: %s", data.path, uri.Path())
+	if path != data.path {
+		t.Errorf("Expected path is %s but got: %s", data.path, path)
 	}
 }
 
 func Test_NewFSURI(t *testing.T) {
 	t.Parallel()
 
-	data := []URIInterfaceTestData{
+	data := []uriCommonTestData{
 		{
 			"OK:scheme:file",
 			"file://a-bc/d_efg/hi222j.test",
@@ -71,7 +71,7 @@ func Test_NewFSURI(t *testing.T) {
 			t.Parallel()
 
 			uri, err := NewFSURI(d.uri)
-			testURIInterfaceObj(t, d, uri, err)
+			testCommonTestData(t, d, uri.Text(), uri.Scheme(), uri.Path(), err)
 		})
 	}
 }
@@ -79,7 +79,7 @@ func Test_NewFSURI(t *testing.T) {
 func Test_NewEnvURI(t *testing.T) {
 	t.Parallel()
 
-	data := []URIInterfaceTestData{
+	data := []uriCommonTestData{
 		{
 			"OK:scheme:env",
 			"env://abc_defg_hij",
@@ -116,7 +116,7 @@ func Test_NewEnvURI(t *testing.T) {
 			t.Parallel()
 
 			uri, err := NewEnvURI(d.uri)
-			testURIInterfaceObj(t, d, uri, err)
+			testCommonTestData(t, d, uri.Text(), uri.Scheme(), uri.Path(), err)
 		})
 	}
 }
@@ -125,7 +125,7 @@ func Test_NewGitHubURI(t *testing.T) {
 	t.Parallel()
 
 	data := []struct {
-		URIInterfaceTestData
+		uriCommonTestData
 		// want
 		owenr    string
 		repo     string
@@ -133,7 +133,7 @@ func Test_NewGitHubURI(t *testing.T) {
 		ref      string
 	}{
 		{
-			URIInterfaceTestData: URIInterfaceTestData{
+			uriCommonTestData: uriCommonTestData{
 				"OK:scheme:github without ref",
 				"github:///repos/yuxki/cannect/contents/cmd/cannect/cannect.go",
 				"github",
@@ -146,7 +146,7 @@ func Test_NewGitHubURI(t *testing.T) {
 			ref:      "",
 		},
 		{
-			URIInterfaceTestData: URIInterfaceTestData{
+			uriCommonTestData: uriCommonTestData{
 				"OK:scheme:github with ref",
 				"github:///repos/yuxki/cannect/contents/cmd/cannect/cannect.go?ref=v0.1.0",
 				"github",
@@ -166,7 +166,7 @@ func Test_NewGitHubURI(t *testing.T) {
 			t.Parallel()
 
 			uri, err := NewGitHubURI(d.uri)
-			testURIInterfaceObj(t, d.URIInterfaceTestData, uri, err)
+			testCommonTestData(t, d.uriCommonTestData, uri.Text(), uri.Scheme(), uri.Path(), err)
 
 			if uri.Owner() != d.owenr {
 				t.Errorf("Expected owner is %s but got: %s", d.owenr, uri.Owner())

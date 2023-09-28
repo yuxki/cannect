@@ -11,7 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yuxki/cannect"
+	"github.com/yuxki/cannect/pkg/asset"
+	"github.com/yuxki/cannect/pkg/catalog"
+	"github.com/yuxki/cannect/pkg/order"
+	"github.com/yuxki/cannect/pkg/uri"
 )
 
 type CatalogJSON struct {
@@ -43,6 +46,12 @@ type runConfig struct {
 	ConLimit int
 }
 
+// Order is a struct that retrieves data from its own catalog and writes the
+// contents at the destination specified by its own URI.
+type Order interface {
+	Order(context.Context) error
+}
+
 func newRunConfig(envOut string, conLimit int) runConfig {
 	return runConfig{
 		EnvOut:   envOut,
@@ -54,61 +63,18 @@ type catalogLogger struct {
 	l *log.Logger
 }
 
-func (c *catalogLogger) Log(uri cannect.URI) {
-	c.l.Printf("Fetching: %s", uri.Text())
+func (c *catalogLogger) Log(uriText string) {
+	c.l.Printf("Fetching: %s", uriText)
 }
 
-func selectCatalog(cJSON CatalogJSON, scheme string, cLogger *catalogLogger) (cannect.Catalog, error) {
-	var catalog cannect.Catalog
-
-	switch scheme {
-	case "file":
-		uri, err := cannect.NewFSURI(cJSON.URI)
-		if err != nil {
-			return nil, err
-		}
-		asset := selectCAAsset(cJSON, uri)
-		catalog = cannect.NewFSCatalog(uri, cJSON.Alias, asset).WithLogger(cLogger)
-	case "github":
-		uri, err := cannect.NewGitHubURI(cJSON.URI)
-		if err != nil {
-			return nil, err
-		}
-		asset := selectCAAsset(cJSON, uri)
-		catalog = cannect.NewGitHubCatalog(uri, cJSON.Alias, asset)
-	default:
-		panic(fmt.Sprintf("Undefined source storage: %s", scheme))
-	}
-
-	return catalog, nil
-}
-
-func selectCAAsset(cJSON CatalogJSON, uri cannect.URI) cannect.CAAsset {
-	var asset cannect.CAAsset
-
-	switch cJSON.Category {
-	case cannect.CertCategory:
-		asset = cannect.NewCertiricate(uri)
-	case cannect.PrivKeyCategory:
-		asset = cannect.NewPrivateKey(uri)
-	case cannect.EncPrivKeyCategory:
-		asset = cannect.NewEncryptedPrivateKey(uri)
-	case cannect.CRLCategory:
-		asset = cannect.NewCRL(uri)
-	default:
-		panic(fmt.Sprintf("Undefined category: %s", cJSON.Category))
-	}
-
-	return asset
-}
-
-func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]cannect.Catalog, error) {
-	catalogSets := make([][]cannect.Catalog, 0, len(cntJSON.Orders))
+func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]order.Catalog, error) {
+	catalogSets := make([][]order.Catalog, 0, len(cntJSON.Orders))
 
 	srcSchemeReg := regexp.MustCompile("^(file|github)")
+	cLogger := catalogLogger{l: logger}
 
 	for _, oJSON := range cntJSON.Orders {
-		catalogSet := make([]cannect.Catalog, 0, len(oJSON.CatalogAliases))
+		catalogSet := make([]order.Catalog, 0, len(oJSON.CatalogAliases))
 		for _, alias := range oJSON.CatalogAliases {
 			var cJSON CatalogJSON
 			var ok bool
@@ -125,13 +91,42 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]cannect.Cat
 				panic(fmt.Sprintf("alias in destination not found in sources: %s", alias))
 			}
 
-			cl := catalogLogger{l: logger}
-			catalog, err := selectCatalog(cJSON, srcSchemeReg.FindString(cJSON.URI), &cl)
-			if err != nil {
-				return nil, err
+			var checker catalog.AssetChecker
+
+			switch cJSON.Category {
+			case asset.CertCategory:
+				checker = asset.NewCertiricate()
+			case asset.PrivKeyCategory:
+				checker = asset.NewPrivateKey()
+			case asset.EncPrivKeyCategory:
+				checker = asset.NewEncryptedPrivateKey()
+			case asset.CRLCategory:
+				checker = asset.NewCRL()
+			default:
+				panic(fmt.Sprintf("Undefined category: %s", cJSON.Category))
 			}
 
-			catalogSet = append(catalogSet, catalog)
+			var ctlg order.Catalog
+			scheme := srcSchemeReg.FindString(cJSON.URI)
+
+			switch scheme {
+			case "file":
+				uri, err := uri.NewFSURI(cJSON.URI)
+				if err != nil {
+					return nil, err
+				}
+				ctlg = catalog.NewFSCatalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
+			case "github":
+				uri, err := uri.NewGitHubURI(cJSON.URI)
+				if err != nil {
+					return nil, err
+				}
+				ctlg = catalog.NewGitHubCatalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
+			default:
+				panic(fmt.Sprintf("Undefined source storage: %s", scheme))
+			}
+
+			catalogSet = append(catalogSet, ctlg)
 		}
 		catalogSets = append(catalogSets, catalogSet)
 	}
@@ -143,8 +138,8 @@ type orderLogger struct {
 	l *log.Logger
 }
 
-func (o *orderLogger) Log(uri cannect.URI) {
-	o.l.Printf("Ordering: %s", uri.Text())
+func (o *orderLogger) Log(uriText string) {
+	o.l.Printf("Ordering: %s", uriText)
 }
 
 func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Logger) error {
@@ -166,19 +161,19 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 		idx := idx
 		wg.Add(1)
 
-		var order cannect.Order
+		var ord Order
 		scheme := dstSchemeReg.FindString(oJSON.URI)
 
 		switch scheme {
 		case "file":
-			uri, err := cannect.NewFSURI(oJSON.URI)
+			uri, err := uri.NewFSURI(oJSON.URI)
 			if err != nil {
 				return err
 			}
 
-			order = cannect.NewFSOrder(uri, catalogSets[idx]).WithLogger(&oLog)
+			ord = order.NewFSOrder(uri, catalogSets[idx]).WithLogger(&oLog)
 		case "env":
-			uri, err := cannect.NewEnvURI(oJSON.URI)
+			uri, err := uri.NewEnvURI(oJSON.URI)
 			if err != nil {
 				return err
 			}
@@ -191,14 +186,14 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 				defer envFile.Close()
 			}
 
-			order = cannect.NewEnvOrder(uri, catalogSets[idx], envFile).WithLogger(&oLog)
+			ord = order.NewEnvOrder(uri, catalogSets[idx], envFile).WithLogger(&oLog)
 		default:
 			panic(fmt.Sprintf("Undefined destination scheme: %s", scheme))
 		}
 
 		go func() {
 			limit <- struct{}{}
-			err := order.Order(ctx)
+			err := ord.Order(ctx)
 			if err != nil {
 				panic(err)
 			}

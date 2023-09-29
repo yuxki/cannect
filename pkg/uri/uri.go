@@ -1,19 +1,14 @@
 package uri
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 )
 
-// InvalidURIError is an error that should be used when attempting to use an
+// ErrInvalidURI is an error that should be used when attempting to use an
 // invalid URI.
-type InvalidURIError struct {
-	uri string
-}
-
-func (i InvalidURIError) Error() string {
-	return fmt.Sprintf("Invalid uri: %s", i.uri)
-}
+var ErrInvalidURI = errors.New("invalid uri")
 
 // FSURI represents a URI to a local file.
 type FSURI struct {
@@ -28,7 +23,9 @@ func NewFSURI(uri string) (FSURI, error) {
 	reg := regexp.MustCompile("^(file):///?((?:[-_a-z0-9A-Z]+)(?:/[-_a-z0-9A-Z.]+)*)$")
 	mt := reg.MatchString(uri)
 	if !mt {
-		return fsURI, InvalidURIError{uri: uri}
+		return fsURI, fmt.Errorf(
+			"could not match collect File System URI pattern with %s: %w", uri, ErrInvalidURI,
+		)
 	}
 
 	submt := reg.FindAllStringSubmatch(uri, -1)
@@ -67,7 +64,9 @@ func NewEnvURI(uri string) (EnvURI, error) {
 	reg := regexp.MustCompile("^(env)://([_a-z0-9A-Z]+)$")
 	mt := reg.MatchString(uri)
 	if !mt {
-		return eURI, InvalidURIError{uri: uri}
+		return eURI, fmt.Errorf(
+			"could not match collect Env URI pattern with %s: %w", uri, ErrInvalidURI,
+		)
 	}
 
 	submt := reg.FindAllStringSubmatch(uri, -1)
@@ -115,7 +114,9 @@ func NewGitHubURI(uri string) (GitHubURI, error) {
 	)
 	mt := reg.MatchString(uri)
 	if !mt {
-		return ghURI, InvalidURIError{uri: uri}
+		return ghURI, fmt.Errorf(
+			"could not match collect GitHub URI pattern with %s: %w", uri, ErrInvalidURI,
+		)
 	}
 
 	submt := reg.FindAllStringSubmatch(uri, -1)

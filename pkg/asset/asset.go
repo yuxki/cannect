@@ -1,6 +1,7 @@
 package asset
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 )
@@ -12,16 +13,11 @@ const (
 	CRLCategory        = "CRL"
 )
 
-type InvalidCAAssetError struct {
-	category string
-	reason   string
-}
-
-func (e InvalidCAAssetError) Error() string {
-	return fmt.Sprintf(
-		"may not be %s or not supported format: %s", e.category, e.reason,
-	)
-}
+// ErrUnexpectedCAAsset means fetched content of CA asset is not unexpected
+// or not supported in cannect.
+var ErrUnexpectedCAAsset = errors.New(
+	"may not have expected content or not be in not supported format",
+)
 
 type Certiricate struct{}
 
@@ -36,10 +32,10 @@ func (c Certiricate) CheckContent(content []byte) error {
 	}
 
 	if !ok {
-		return InvalidCAAssetError{
-			category: CertCategory,
-			reason:   `not contain "-----BEGIN CERTIFICATE-----" pattern`,
-		}
+		return fmt.Errorf(
+			`"-----BEGIN CERTIFICATE-----" pattern may be contained in %s: %w`,
+			CertCategory, ErrUnexpectedCAAsset,
+		)
 	}
 
 	return nil
@@ -58,10 +54,10 @@ func (p PrivateKey) CheckContent(content []byte) error {
 	}
 
 	if !ok {
-		return InvalidCAAssetError{
-			category: PrivKeyCategory,
-			reason:   `not contain "PRIVATE KEY-----" pattern`,
-		}
+		return fmt.Errorf(
+			`"PRIVATE KEY-----" pattern may be contained in %s: %w`,
+			PrivKeyCategory, ErrUnexpectedCAAsset,
+		)
 	}
 
 	ok, err = regexp.Match("-----BEGIN ENCRYPTED", content)
@@ -69,10 +65,10 @@ func (p PrivateKey) CheckContent(content []byte) error {
 		return err
 	}
 	if ok {
-		return InvalidCAAssetError{
-			category: PrivKeyCategory,
-			reason:   `contain "-----BEGIN ENCRYPTED" pattern`,
-		}
+		return fmt.Errorf(
+			`"-----BEGIN ENCRYPTED" pattern may NOT be contained in %s: %w`,
+			PrivKeyCategory, ErrUnexpectedCAAsset,
+		)
 	}
 
 	return nil
@@ -91,10 +87,10 @@ func (e EncryptedPrivateKey) CheckContent(content []byte) error {
 	}
 
 	if !ok {
-		return InvalidCAAssetError{
-			category: EncPrivKeyCategory,
-			reason:   `not contain "-----BEGIN ENCRYPTED PRIVATE KEY-----" pattern`,
-		}
+		return fmt.Errorf(
+			`"-----BEGIN ENCRYPTED PRIVATE KEY-----" pattern may be contained in %s: %w`,
+			EncPrivKeyCategory, ErrUnexpectedCAAsset,
+		)
 	}
 
 	return nil
@@ -113,10 +109,10 @@ func (c CRL) CheckContent(content []byte) error {
 	}
 
 	if !ok {
-		return InvalidCAAssetError{
-			category: EncPrivKeyCategory,
-			reason:   `not contain "-----BEGIN X509 CRL-----" pattern`,
-		}
+		return fmt.Errorf(
+			`"-----BEGIN X509 CRL-----" pattern may be contained in %s: %w`,
+			CRLCategory, ErrUnexpectedCAAsset,
+		)
 	}
 
 	return nil

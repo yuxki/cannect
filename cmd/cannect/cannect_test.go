@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"testing"
@@ -189,9 +190,7 @@ func TestValidate(t *testing.T) {
 					},
 				},
 			},
-			InvalidOrderFileError{
-				reason: "Order URI must not be duplicated: file://testdata/test-root-ca.crt.crt",
-			},
+			errOrderURIDuplicated,
 		},
 		{
 			"NG:Undefined Alias",
@@ -212,9 +211,7 @@ func TestValidate(t *testing.T) {
 					},
 				},
 			},
-			InvalidOrderFileError{
-				reason: "undefined aliase: sub-ca.crt",
-			},
+			errUndefinedAlias,
 		},
 	}
 
@@ -232,8 +229,8 @@ func TestValidate(t *testing.T) {
 				return
 			}
 
-			if diff := cmp.Diff(err.Error(), d.err.Error()); diff != "" {
-				t.Error(diff)
+			if !errors.Is(err, d.err) {
+				t.Fatalf("Expected %#v error but got: %#v", d.err, err)
 			}
 		})
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -67,6 +68,13 @@ func (c *catalogLogger) Log(uriText string) {
 	c.l.Printf("Fetching: %s", uriText)
 }
 
+var (
+	ErrAliasNotFound      = errors.New("alias in destination not found in sources")
+	ErrUndefinedCategory  = errors.New("undefined category")
+	ErrUndefinedSrcScheme = errors.New("undefined source scheme")
+	ErrUndefinedDstScheme = errors.New("undefined destination scheme")
+)
+
 func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Catalog, error) {
 	catalogSets := make([][]orderapi.Catalog, 0, len(cntJSON.Orders))
 
@@ -90,7 +98,7 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Ca
 			}
 
 			if !ok {
-				panic(fmt.Sprintf("alias in destination not found in sources: %s", aliases[aliasIdx]))
+				return nil, fmt.Errorf("%s: %w", aliases[aliasIdx], ErrAliasNotFound)
 			}
 
 			var checker catalogapi.AssetChecker
@@ -105,7 +113,7 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Ca
 			case asset.CRLCategory:
 				checker = asset.NewCRL()
 			default:
-				panic(fmt.Sprintf("Undefined category: %s", cJSON.Category))
+				return nil, fmt.Errorf("%s: %w", cJSON.Category, ErrUndefinedCategory)
 			}
 
 			var catalog orderapi.Catalog
@@ -125,7 +133,7 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Ca
 				}
 				catalog = catalogapi.NewGitHubCatalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
 			default:
-				panic(fmt.Sprintf("Undefined source storage: %s", scheme))
+				return nil, fmt.Errorf("%s: %w", scheme, ErrUndefinedSrcScheme)
 			}
 
 			catalogSet = append(catalogSet, catalog)
@@ -190,14 +198,14 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 
 			order = orderapi.NewEnvOrder(uri, catalogSets[idx], envFile).WithLogger(&oLog)
 		default:
-			panic(fmt.Sprintf("Undefined destination scheme: %s", scheme))
+			return fmt.Errorf("%s: %w", scheme, ErrUndefinedDstScheme)
 		}
 
 		go func() {
 			limit <- struct{}{}
 			err := order.Order(ctx)
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 
 			wg.Done()
@@ -210,33 +218,35 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 	return nil
 }
 
-func unmarshal(file *os.File) CAnnectJSON {
+func unmarshal(file *os.File) (CAnnectJSON, error) {
 	var jsn CAnnectJSON
 	err := json.NewDecoder(file).Decode(&jsn)
 	if err != nil {
-		panic(err)
+		return jsn, err
 	}
 
-	return jsn
+	return jsn, nil
 }
 
-func unmarshalBoth(cFile, oFile *os.File) CAnnectJSON {
+func unmarshalBoth(cFile, oFile *os.File) (CAnnectJSON, error) {
+	var jsn CAnnectJSON
+
 	var cJSON CatalogsJSON
 	err := json.NewDecoder(cFile).Decode(&cJSON)
 	if err != nil {
-		panic(err)
+		return jsn, err
 	}
 
 	var oJSON OrdersJSON
 	err = json.NewDecoder(oFile).Decode(&oJSON)
 	if err != nil {
-		panic(err)
+		return jsn, err
 	}
 
 	return CAnnectJSON{
 		Catalogs: cJSON.Catalogs,
 		Orders:   oJSON.Orders,
-	}
+	}, nil
 }
 
 type InvalidOrderFileError struct {
@@ -357,19 +367,24 @@ Usage: cannect <OPTIONS>
 			log.Fatalln(err)
 		}
 
-		cntJSON = unmarshalBoth(cFile, oFile)
+		cntJSON, err = unmarshalBoth(cFile, oFile)
+		if err != nil {
+			log.Fatal(err)
+		}
 	case catalogOrderFlg:
 		file, err := os.Open(*catalogOrder)
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		cntJSON = unmarshal(file)
+		cntJSON, err = unmarshal(file)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-
 	err := validate(cntJSON)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal(err)
 	}
 
 	ctx := context.Background()

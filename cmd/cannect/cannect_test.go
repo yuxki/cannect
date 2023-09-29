@@ -59,7 +59,10 @@ func TestUnmarshal(t *testing.T) {
 		},
 	}
 
-	jsn := unmarshal(file)
+	jsn, err := unmarshal(file)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if diff := cmp.Diff(jsn, want); diff != "" {
 		t.Error(diff)
 	}
@@ -120,7 +123,10 @@ func TestUnmarshalBoth(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	jsn := unmarshalBoth(catalogFile, orderFile)
+	jsn, err := unmarshalBoth(catalogFile, orderFile)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if diff := cmp.Diff(jsn, want); diff != "" {
 		t.Error(diff)

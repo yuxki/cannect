@@ -73,14 +73,16 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Ca
 	srcSchemeReg := regexp.MustCompile("^(file|github)")
 	cLogger := catalogLogger{l: logger}
 
-	for _, oJSON := range cntJSON.Orders {
-		catalogSet := make([]orderapi.Catalog, 0, len(oJSON.CatalogAliases))
-		for _, alias := range oJSON.CatalogAliases {
+	orderJSONs := cntJSON.Orders
+	for idx := range orderJSONs {
+		catalogSet := make([]orderapi.Catalog, 0, len(orderJSONs[idx].CatalogAliases))
+		aliases := orderJSONs[idx].CatalogAliases
+		for aliasIdx := range aliases {
 			var cJSON CatalogJSON
 			var ok bool
 
 			for _, jsn := range cntJSON.Catalogs {
-				if jsn.Alias == alias {
+				if jsn.Alias == aliases[aliasIdx] {
 					cJSON = jsn
 					ok = true
 					break
@@ -88,7 +90,7 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Ca
 			}
 
 			if !ok {
-				panic(fmt.Sprintf("alias in destination not found in sources: %s", alias))
+				panic(fmt.Sprintf("alias in destination not found in sources: %s", aliases[aliasIdx]))
 			}
 
 			var checker catalogapi.AssetChecker
@@ -247,13 +249,15 @@ func (e InvalidOrderFileError) Error() string {
 
 func validate(jsn CAnnectJSON) error {
 	alsMap := make(map[string]interface{})
-	for _, jSrc := range jsn.Catalogs {
-		alsMap[jSrc.Alias] = nil
+	for i := range jsn.Catalogs {
+		alsMap[jsn.Catalogs[i].Alias] = nil
 	}
 
 	dupMap := make(map[string]interface{})
-	for _, oJSON := range jsn.Orders {
-		for _, als := range oJSON.CatalogAliases {
+	oJSONs := jsn.Orders
+	for idx := range oJSONs {
+		aliases := oJSONs[idx].CatalogAliases
+		for _, als := range aliases {
 			_, ok := alsMap[als]
 			if !ok {
 				// Check no undefined alias
@@ -263,13 +267,13 @@ func validate(jsn CAnnectJSON) error {
 			}
 		}
 
-		if _, ok := dupMap[oJSON.URI]; !ok {
-			dupMap[oJSON.URI] = nil
+		if _, ok := dupMap[oJSONs[idx].URI]; !ok {
+			dupMap[oJSONs[idx].URI] = nil
 			continue
 		}
 		// Check No Duplicated destination
 		return InvalidOrderFileError{
-			reason: fmt.Sprintf("Order URI must not be duplicated: %s", oJSON.URI),
+			reason: fmt.Sprintf("Order URI must not be duplicated: %s", oJSONs[idx].URI),
 		}
 	}
 

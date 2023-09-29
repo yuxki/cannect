@@ -1,6 +1,7 @@
 package uri
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -26,8 +27,8 @@ func testCommonTestData(t *testing.T, data uriCommonTestData, text, scheme, path
 		if err == nil {
 			t.Fatalf("expected error returned but got: %s", err.Error())
 		}
-		if err.Error() != data.err.Error() {
-			t.Fatalf(`expected error is "%s" but got: %s`, data.err.Error(), err.Error())
+		if !errors.Is(err, data.err) {
+			t.Fatalf(`expected error is "%#v" but got: %#v`, data.err, err)
 		}
 		return
 	}
@@ -61,7 +62,7 @@ func Test_NewFSURI(t *testing.T) {
 			"ng://ng",
 			"",
 			"",
-			InvalidURIError{uri: "ng://ng"},
+			ErrInvalidURI,
 		},
 	}
 
@@ -92,21 +93,21 @@ func Test_NewEnvURI(t *testing.T) {
 			"env://abc_defg_hij-aaa",
 			"env",
 			"abc_defg_hij",
-			InvalidURIError{uri: "env://abc_defg_hij-aaa"},
+			ErrInvalidURI,
 		},
 		{
 			"NG:path:invalid",
 			"env://abc_defg_hij/aaa",
 			"env",
 			"abc_defg_hij",
-			InvalidURIError{uri: "env://abc_defg_hij/aaa"},
+			ErrInvalidURI,
 		},
 		{
 			"NG:scheme:undefined",
 			"ng://ng",
 			"",
 			"",
-			InvalidURIError{uri: "ng://ng"},
+			ErrInvalidURI,
 		},
 	}
 

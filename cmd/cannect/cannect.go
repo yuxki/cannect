@@ -69,10 +69,12 @@ func (c *catalogLogger) Log(uriText string) {
 }
 
 var (
-	ErrAliasNotFound      = errors.New("alias in destination not found in sources")
-	ErrUndefinedCategory  = errors.New("undefined category")
-	ErrUndefinedSrcScheme = errors.New("undefined source scheme")
-	ErrUndefinedDstScheme = errors.New("undefined destination scheme")
+	errAliasNotFound      = errors.New("alias in destination not found in sources")
+	errUndefinedAlias     = errors.New("undefined alias")
+	errUndefinedCategory  = errors.New("undefined category")
+	errUndefinedSrcScheme = errors.New("undefined source scheme")
+	errUndefinedDstScheme = errors.New("undefined destination scheme")
+	errOrderURIDuplicated = errors.New("order URI must not be duplicated")
 )
 
 func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Catalog, error) {
@@ -98,7 +100,7 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Ca
 			}
 
 			if !ok {
-				return nil, fmt.Errorf("%s: %w", aliases[aliasIdx], ErrAliasNotFound)
+				return nil, fmt.Errorf("%s: %w", aliases[aliasIdx], errAliasNotFound)
 			}
 
 			var checker catalogapi.AssetChecker
@@ -113,7 +115,7 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Ca
 			case asset.CRLCategory:
 				checker = asset.NewCRL()
 			default:
-				return nil, fmt.Errorf("%s: %w", cJSON.Category, ErrUndefinedCategory)
+				return nil, fmt.Errorf("%s: %w", cJSON.Category, errUndefinedCategory)
 			}
 
 			var catalog orderapi.Catalog
@@ -133,7 +135,7 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Ca
 				}
 				catalog = catalogapi.NewGitHubCatalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
 			default:
-				return nil, fmt.Errorf("%s: %w", scheme, ErrUndefinedSrcScheme)
+				return nil, fmt.Errorf("%s: %w", scheme, errUndefinedSrcScheme)
 			}
 
 			catalogSet = append(catalogSet, catalog)
@@ -198,7 +200,7 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 
 			order = orderapi.NewEnvOrder(uri, catalogSets[idx], envFile).WithLogger(&oLog)
 		default:
-			return fmt.Errorf("%s: %w", scheme, ErrUndefinedDstScheme)
+			return fmt.Errorf("%s: %w", scheme, errUndefinedDstScheme)
 		}
 
 		go func() {
@@ -249,14 +251,6 @@ func unmarshalBoth(cFile, oFile *os.File) (CAnnectJSON, error) {
 	}, nil
 }
 
-type InvalidOrderFileError struct {
-	reason string
-}
-
-func (e InvalidOrderFileError) Error() string {
-	return fmt.Sprintf("invalid order file: %s", e.reason)
-}
-
 func validate(jsn CAnnectJSON) error {
 	alsMap := make(map[string]interface{})
 	for i := range jsn.Catalogs {
@@ -271,9 +265,7 @@ func validate(jsn CAnnectJSON) error {
 			_, ok := alsMap[als]
 			if !ok {
 				// Check no undefined alias
-				return InvalidOrderFileError{
-					reason: fmt.Sprintf("undefined aliase: %s", als),
-				}
+				return fmt.Errorf("%s: %w", als, errUndefinedAlias)
 			}
 		}
 
@@ -282,9 +274,7 @@ func validate(jsn CAnnectJSON) error {
 			continue
 		}
 		// Check No Duplicated destination
-		return InvalidOrderFileError{
-			reason: fmt.Sprintf("Order URI must not be duplicated: %s", oJSONs[idx].URI),
-		}
+		return fmt.Errorf("%s: %w", oJSONs[idx].URI, errOrderURIDuplicated)
 	}
 
 	return nil

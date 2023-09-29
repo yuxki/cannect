@@ -49,10 +49,10 @@ func (f *FSOrder) Order(ctx context.Context) error {
 	}
 	defer file.Close()
 
-	for _, catalog := range f.catalogs {
+	for idx := range f.catalogs {
 		var buf []byte
 
-		buf, err := catalog.Fetch(ctx)
+		buf, err := f.catalogs[idx].Fetch(ctx)
 		if err != nil {
 			return err
 		}
@@ -98,8 +98,8 @@ func (e *EnvOrder) Order(ctx context.Context) error {
 
 	var buf []byte
 
-	for _, catalog := range e.catalogs {
-		b, err := catalog.Fetch(ctx)
+	for idx := range e.catalogs {
+		b, err := e.catalogs[idx].Fetch(ctx)
 		if err != nil {
 			return err
 		}

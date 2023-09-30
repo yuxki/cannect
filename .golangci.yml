@@ -16,6 +16,7 @@ linters-settings:
       - ok
     ignore-decls:
       - wg sync.WaitGroup
+      - g *errgroup.Group
   tagliatelle:
     case:
       rules:

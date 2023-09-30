@@ -252,25 +252,25 @@ func unmarshalBoth(cFile, oFile *os.File) (CAnnectJSON, error) {
 }
 
 func validate(jsn CAnnectJSON) error {
-	alsMap := make(map[string]interface{})
+	alsSet := make(map[string]struct{})
 	for i := range jsn.Catalogs {
-		alsMap[jsn.Catalogs[i].Alias] = nil
+		alsSet[jsn.Catalogs[i].Alias] = struct{}{}
 	}
 
-	dupMap := make(map[string]interface{})
+	dupSet := make(map[string]struct{})
 	oJSONs := jsn.Orders
 	for idx := range oJSONs {
 		aliases := oJSONs[idx].CatalogAliases
 		for _, als := range aliases {
-			_, ok := alsMap[als]
+			_, ok := alsSet[als]
 			if !ok {
 				// Check no undefined alias
 				return fmt.Errorf("%s: %w", als, errUndefinedAlias)
 			}
 		}
 
-		if _, ok := dupMap[oJSONs[idx].URI]; !ok {
-			dupMap[oJSONs[idx].URI] = nil
+		if _, ok := dupSet[oJSONs[idx].URI]; !ok {
+			dupSet[oJSONs[idx].URI] = struct{}{}
 			continue
 		}
 		// Check No Duplicated destination

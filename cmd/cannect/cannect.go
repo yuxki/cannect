@@ -324,6 +324,58 @@ func checkExclusive(catalog, order, catalogOrder string) (int, bool) {
 	return flgs, false
 }
 
+func CreateCannectJSON(catalog, order, catalogOrder string, flgs int) (CAnnectJSON, error) {
+	var cntJSON CAnnectJSON
+	switch flgs {
+	case catalogFlg | orderFlg:
+		cFile, err := os.Open(catalog)
+		if err != nil {
+			return cntJSON, err
+		}
+		defer func() {
+			if err := cFile.Close(); err != nil {
+				log.Printf("failed to close file: %v\n", err)
+			}
+		}()
+
+		oFile, err := os.Open(order)
+		if err != nil {
+			return cntJSON, err
+		}
+		defer func() {
+			if err := oFile.Close(); err != nil {
+				log.Printf("failed to close file: %v\n", err)
+			}
+		}()
+
+		cntJSON, err = unmarshalBoth(cFile, oFile)
+		if err != nil {
+			return cntJSON, err
+		}
+	case catalogOrderFlg:
+		file, err := os.Open(catalogOrder)
+		if err != nil {
+			return cntJSON, err
+		}
+		defer func() {
+			if err := file.Close(); err != nil {
+				log.Printf("failed to close file: %v\n", err)
+			}
+		}()
+
+		cntJSON, err = unmarshal(file)
+		if err != nil {
+			return cntJSON, err
+		}
+	}
+	err := validate(cntJSON)
+	if err != nil {
+		return cntJSON, err
+	}
+
+	return cntJSON, nil
+}
+
 func main() {
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 
@@ -351,54 +403,10 @@ Usage: cannect <OPTIONS>
 		)
 	}
 
-	var cntJSON CAnnectJSON
-	switch flgs {
-	case catalogFlg | orderFlg:
-		cFile, err := os.Open(*catalog)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		defer func() {
-			if err := cFile.Close(); err != nil {
-				log.Printf("failed to close file: %v\n", err)
-			}
-		}()
-
-		oFile, err := os.Open(*order)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		defer func() {
-			if err := oFile.Close(); err != nil {
-				log.Printf("failed to close file: %v\n", err)
-			}
-		}()
-
-		cntJSON, err = unmarshalBoth(cFile, oFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-	case catalogOrderFlg:
-		file, err := os.Open(*catalogOrder)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		defer func() {
-			if err := file.Close(); err != nil {
-				log.Printf("failed to close file: %v\n", err)
-			}
-		}()
-
-		cntJSON, err = unmarshal(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	err := validate(cntJSON)
+	cntJSON, err := CreateCannectJSON(*catalog, *order, *catalogOrder, flgs)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(*timeout))
 	defer cancel()

@@ -9,13 +9,13 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/yuxki/cannect/pkg/asset"
 	catalogapi "github.com/yuxki/cannect/pkg/catalog"
 	orderapi "github.com/yuxki/cannect/pkg/order"
 	uriapi "github.com/yuxki/cannect/pkg/uri"
+	"golang.org/x/sync/errgroup"
 )
 
 type CatalogJSON struct {
@@ -162,16 +162,15 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 
 	// Order to destinations
 	var envFile *os.File
-	var wg sync.WaitGroup
 	limit := make(chan struct{}, cfg.ConLimit)
 
 	dstSchemeReg := regexp.MustCompile("^(file|env)")
 
 	oLog := orderLogger{l: logger}
 
+	g, ctx := errgroup.WithContext(ctx)
 	for idx, oJSON := range cntJSON.Orders {
 		idx := idx
-		wg.Add(1)
 
 		var order Order
 		scheme := dstSchemeReg.FindString(oJSON.URI)
@@ -203,19 +202,22 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 			return fmt.Errorf("%s: %w", scheme, errUndefinedDstScheme)
 		}
 
-		go func() {
+		g.Go(func() error {
 			limit <- struct{}{}
 			err := order.Order(ctx)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 
-			wg.Done()
 			<-limit
-		}()
+			return nil
+		})
 	}
 
-	wg.Wait()
+	err = g.Wait()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

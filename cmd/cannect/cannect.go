@@ -154,7 +154,7 @@ func (o *orderLogger) Log(uriText string) {
 	o.l.Printf("Ordering: %s", uriText)
 }
 
-func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Logger) error {
+func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Logger) (err error) {
 	catalogSets, err := createCatalogSets(cntJSON, logger)
 	if err != nil {
 		return err
@@ -194,7 +194,12 @@ func run(ctx context.Context, cntJSON CAnnectJSON, cfg runConfig, logger *log.Lo
 				if err != nil {
 					return err
 				}
-				defer envFile.Close()
+				defer func() {
+					closeErr := envFile.Close()
+					if err == nil {
+						err = closeErr
+					}
+				}()
 			}
 
 			order = orderapi.NewEnvOrder(uri, catalogSets[idx], envFile).WithLogger(&oLog)
@@ -353,11 +358,21 @@ Usage: cannect <OPTIONS>
 		if err != nil {
 			log.Fatalln(err)
 		}
+		defer func() {
+			if err := cFile.Close(); err != nil {
+				log.Printf("failed to close file: %v\n", err)
+			}
+		}()
 
 		oFile, err := os.Open(*order)
 		if err != nil {
 			log.Fatalln(err)
 		}
+		defer func() {
+			if err := oFile.Close(); err != nil {
+				log.Printf("failed to close file: %v\n", err)
+			}
+		}()
 
 		cntJSON, err = unmarshalBoth(cFile, oFile)
 		if err != nil {
@@ -368,6 +383,11 @@ Usage: cannect <OPTIONS>
 		if err != nil {
 			log.Fatalln(err)
 		}
+		defer func() {
+			if err := file.Close(); err != nil {
+				log.Printf("failed to close file: %v\n", err)
+			}
+		}()
 
 		cntJSON, err = unmarshal(file)
 		if err != nil {

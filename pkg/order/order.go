@@ -38,7 +38,7 @@ func NewFSOrder(uri uriapi.FSURI, catalogs []Catalog) *FSOrder {
 	return order
 }
 
-func (f *FSOrder) Order(ctx context.Context) error {
+func (f *FSOrder) Order(ctx context.Context) (err error) {
 	if f.l != nil {
 		f.l.Log(f.uri.Text())
 	}
@@ -47,7 +47,12 @@ func (f *FSOrder) Order(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		closeErr := file.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
 
 	for idx := range f.catalogs {
 		var buf []byte

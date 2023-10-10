@@ -224,5 +224,21 @@ Repository Content API. It needs environment variable `GITHUB_TOKEN`.
 github:///repos/yuxki/cannect/contents/examples/store/root-ca.crt
 ```
 
+### S3
+Get the content of CA assets from the AWS S3 using the AWS S3 GetObject API.
+It needs environment variable `AWS_ACCESS_KEY_ID`, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION.
+
+- Scheme
+    - "s3"
+- Path
+    - Bueckt name/Object name.
+#### Support
+|catalog|order|
+| -------- | -------- |
+|✔||
+```
+s3://fooBucket/root-ca.crt
+```
+
 ## Limitation
 - Support only PEM format.

@@ -158,3 +158,53 @@ func (u GitHubURI) RepoPath() string {
 func (u GitHubURI) Ref() string {
 	return u.ref
 }
+
+type S3URI struct {
+	text   string
+	scheme string
+	path   string
+	bucket string
+	key    string
+}
+
+// FSURI represents a URI for an AWS S3 GetObject API.
+func NewS3URI(uri string) (S3URI, error) {
+	var s3URI S3URI
+
+	reg := regexp.MustCompile("^(s3)://(([^/]+)/(.*))$")
+	mt := reg.MatchString(uri)
+	if !mt {
+		return s3URI, fmt.Errorf(
+			"could not match collect S# URI pattern with %s: %w", uri, ErrInvalidURI,
+		)
+	}
+
+	submt := reg.FindAllStringSubmatch(uri, -1)
+	s3URI.text = submt[0][0]
+	s3URI.scheme = submt[0][1]
+	s3URI.path = submt[0][2]
+	s3URI.bucket = submt[0][3]
+	s3URI.key = submt[0][4]
+
+	return s3URI, nil
+}
+
+func (s S3URI) Text() string {
+	return s.text
+}
+
+func (s S3URI) Scheme() string {
+	return s.scheme
+}
+
+func (s S3URI) Path() string {
+	return s.path
+}
+
+func (s S3URI) Bucket() string {
+	return s.bucket
+}
+
+func (s S3URI) Key() string {
+	return s.key
+}

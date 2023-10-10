@@ -80,7 +80,7 @@ var (
 func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Catalog, error) {
 	catalogSets := make([][]orderapi.Catalog, 0, len(cntJSON.Orders))
 
-	srcSchemeReg := regexp.MustCompile("^(file|github)")
+	srcSchemeReg := regexp.MustCompile("^(file|github|s3)")
 	cLogger := catalogLogger{l: logger}
 
 	orderJSONs := cntJSON.Orders
@@ -134,6 +134,12 @@ func createCatalogSets(cntJSON CAnnectJSON, logger *log.Logger) ([][]orderapi.Ca
 					return nil, err
 				}
 				catalog = catalogapi.NewGitHubCatalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
+			case "s3":
+				uri, err := uriapi.NewS3URI(cJSON.URI)
+				if err != nil {
+					return nil, err
+				}
+				catalog = catalogapi.NewS3Catalog(uri, cJSON.Alias, checker).WithLogger(&cLogger)
 			default:
 				return nil, fmt.Errorf("%s: %w", scheme, errUndefinedSrcScheme)
 			}

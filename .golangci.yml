@@ -122,3 +122,7 @@ issues:
         - varnamelen
     - text: func `main` is unused
       path: 'cannect.go'
+    - path: 'cannect.go'
+      linters:
+        - gocognit
+        - gocyclo

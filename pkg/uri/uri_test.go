@@ -184,3 +184,80 @@ func Test_NewGitHubURI(t *testing.T) {
 		})
 	}
 }
+
+func Test_NewS3URI(t *testing.T) {
+	t.Parallel()
+
+	data := []struct {
+		uriCommonTestData
+		// want
+		bucket string
+		key    string
+		err    error
+	}{
+		{
+			uriCommonTestData: uriCommonTestData{
+				"OK:without logical hierarchy",
+				"s3://fooBucket/barKey",
+				"s3",
+				"fooBucket/barKey",
+				nil,
+			},
+			bucket: "fooBucket",
+			key:    "barKey",
+			err:    nil,
+		},
+		{
+			uriCommonTestData: uriCommonTestData{
+				"OK:with logical hierarchy",
+				"s3://fooBucket/fooKey/barKey/bazKey",
+				"s3",
+				"fooBucket/fooKey/barKey/bazKey",
+				nil,
+			},
+			bucket: "fooBucket",
+			key:    "fooKey/barKey/bazKey",
+			err:    nil,
+		},
+		{
+			uriCommonTestData: uriCommonTestData{
+				"NG:invalid URI",
+				"ng://fooBucket/fooKey/barKey/bazKey",
+				"ng",
+				"fooBucket/fooKey/barKey/bazKey",
+				nil,
+			},
+			bucket: "fooBucket",
+			key:    "fooKey/barKey/bazKey",
+			err:    ErrInvalidURI,
+		},
+	}
+
+	for _, d := range data {
+		d := d
+		t.Run(d.testcase, func(t *testing.T) {
+			t.Parallel()
+
+			uri, err := NewS3URI(d.uri)
+			if err != nil {
+				if !errors.Is(d.err, errors.Unwrap(err)) {
+					t.Fatalf("Expected error is %#v but got: %#v", d.err, err)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Expected error is nil  but got: %#v", err)
+			}
+
+			testCommonTestData(t, d.uriCommonTestData, uri.Text(), uri.Scheme(), uri.Path(), err)
+
+			if uri.Bucket() != d.bucket {
+				t.Errorf("Expected bucket is %s but got: %s", d.bucket, uri.Bucket())
+			}
+			if uri.Key() != d.key {
+				t.Errorf("Expected key is %s but got: %s", d.key, uri.Key())
+			}
+		})
+	}
+}

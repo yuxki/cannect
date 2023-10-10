@@ -4,8 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/go-github/v55/github"
 	uriapi "github.com/yuxki/cannect/pkg/uri"
 )
@@ -136,4 +140,62 @@ func (g *GitHubCatalog) Fetch(ctx context.Context) ([]byte, error) {
 func (g *GitHubCatalog) WithLogger(l Logger) *GitHubCatalog {
 	g.logger = l
 	return g
+}
+
+// S3Catalog is an implementation of the Catalog interface.
+// It is responsible for fetching assets held by a Private CA from a AWS S3.
+// It uses the AWS S3 GetObject API for this purpose.
+type S3Catalog struct {
+	uri     uriapi.S3URI
+	alias   string
+	checker AssetChecker
+	logger  Logger
+}
+
+// The Fetch function utilizes the GetObjcet API in AWS S3. It
+// requires the usage of an environment variable "AWS_ACCESS_KEY_ID" and
+// "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", to authorize the request.
+// The function then returns the content of the file as a byte slice.
+func (s *S3Catalog) Fetch(ctx context.Context) ([]byte, error) {
+	if s.logger != nil {
+		s.logger.Log(s.uri.Text())
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	client := s3.NewFromConfig(cfg)
+
+	output, err := client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.uri.Bucket()),
+		Key:    aws.String(s.uri.Key()),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer output.Body.Close()
+
+	buf, err := io.ReadAll(output.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf, nil
+}
+
+func NewS3Catalog(uri uriapi.S3URI, alias string, checker AssetChecker) *S3Catalog {
+	ctlg := &S3Catalog{
+		uri:     uri,
+		alias:   alias,
+		checker: checker,
+	}
+
+	return ctlg
+}
+
+func (s *S3Catalog) WithLogger(l Logger) *S3Catalog {
+	s.logger = l
+	return s
 }

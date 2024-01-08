@@ -28,7 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.17.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.23.1 // indirect
 	github.com/aws/smithy-go v1.15.0 // indirect
-	github.com/cloudflare/circl v1.3.3 // indirect
+	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
